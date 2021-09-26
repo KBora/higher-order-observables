@@ -15,6 +15,8 @@ export class PlanetsComponent implements OnInit {
   planets: Planet[] = [];
   moons: Moon[] = [];
 
+  planetsWithMoonNames: Planet[] = [];
+
   constructor(private planetsService: PlanetsService) { }
 
   ngOnInit(): void {    
@@ -77,32 +79,37 @@ export class PlanetsComponent implements OnInit {
         mergeMap(planets =>     // transform planets into observable       
           from(planets) // converts planets into observable
             .pipe(
-              tap(planet => console.log("tap planet", planet)),
-              // map(planet => planet.moonIds), // get the moon ids
               concatMap(planet => // transform moon ids into observable
                 from(planet.moons) // convert ids into observables
                   .pipe(
-                    map(moon => moon.id),
-                    tap(moonId => console.log("tap moonId", moonId)),
-                    concatMap((moonId: number) => 
-                      this.planetsService.moon(moonId)
-                        .pipe(
-                          map( moon => ({...moon}))
-                        )
-                    ), // merge http results into one strem
-                    toArray() // concatenate results of stream into array of moons
+                    concatMap((moon: Moon) => this.planetsService.moon(moon.id)), 
+                    toArray(), // concatenate results of stream into array of moons,
+                    map(moonsWithNamesArray => {
+                      // do data mapping, data transform here
+                      // in this case, we want to append moon names to the moon array in the parent 'planet' object
+                      let moonsUpdated: Moon[] = 
+                         planet.moons.map(moon => {
+                           const matchingMoon = moonsWithNamesArray.find(moonWithName => moon.id === moonWithName.id)
+                           return matchingMoon ? matchingMoon : moon;
+                         })
+                      let updatedPlanet = { ...planet,  moons: moonsUpdated };                    
+                      return updatedPlanet;
+                    })
                   )
               ),
-              tap((moonArray: Moon[]) => this.moons.concat(moonArray))
             )
         ),
-        tap( what => console.log('what?? ', what))
-      ).subscribe()
+        tap(planetWithMoonNames => console.log('planetWithMoonNames: ', planetWithMoonNames))
+    ).subscribe(planetWithMoonName => {
+      this.planetsWithMoonNames.push(planetWithMoonName);
+    })
 
 
     // solution 2c - forkJoin stackoverflow example
 
     // solution 3 - Promises and await
+
+    // error handling
         
   }
 
