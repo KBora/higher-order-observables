@@ -25,9 +25,8 @@ export class PlanetsComponent implements OnInit {
   loadPlanets() {
 
     // solution 1 - subscribe in a subscribe
-    // PRO - easier to see what's happening
+    // PRO - sort of easier to see what's happening
     // CONS - nested subscriptions are bad - subscriptions need to be cleaned up
-    // CONS - return values of inner subscribe are not assigned in sequence
     // this.planets$.pipe(
     //   tap( result => console.log("tap: ", result))
     // ).subscribe(
@@ -35,10 +34,10 @@ export class PlanetsComponent implements OnInit {
     //     this.planets = planets;
     //     planets.forEach( planet => {
     //       planet.moons.forEach( moon => {
-    //         this.planetsService.moon(moon).subscribe(
+    //         this.planetsService.moon(moon.id).subscribe(
     //           moon => {
     //             console.log(`moon id ${moon.id}, moon name ${moon.name}`);
-    //             this.moons.push(moon.name);
+    //             this.moons.push(moon);
     //           }
     //         )
     //       }            
@@ -72,7 +71,7 @@ export class PlanetsComponent implements OnInit {
     //   ).subscribe()
 
     
-    // solution 2b - write results of inner calls into outer call data rather than external variables
+    // solution 2b - modify data returned 
     // this.planets$
     //   .pipe(
     //     tap(planets => this.planets = planets),
@@ -82,7 +81,7 @@ export class PlanetsComponent implements OnInit {
     //           mergeMap(planet => // transform moon ids into observable
     //             from(planet.moons) // convert ids into observables
     //               .pipe(
-    //                 mergeMap((moon: Moon) => this.planetsService.moon(moon.id)), 
+    //                 mergeMap((moon: Moon) => this.planetsService.moon(moon.id)),  // replace with concatMap to run requests in sequence rather than parallel
     //                 toArray(), // concatenate results of stream into array of moons,
     //                 map(moonsWithNamesArray => {
     //                   // do data mapping, data transform here
@@ -107,38 +106,49 @@ export class PlanetsComponent implements OnInit {
     // })
 
 
-    // solution 2c - forkJoin shortens the code a little
+    // solution 2c - forkJoin shortens the code a little (no need for .toArray) but means everything runs in parallel
     this.planets$.pipe(
-        tap(planets => this.planets = planets),
-        mergeMap((planets: Planet[]) =>     
-          forkJoin( planets.map((planet: Planet) =>
-            of(planet).pipe(
-              mergeMap(planet => 
-                // forkJoin executes in parallel and returns an array of results                
-                forkJoin(planet.moons.map((moon: Moon) => this.planetsService.moon(moon.id))).pipe(
-                  map(moonsWithNamesArray => {
-                    let moonsUpdated: Moon[] =
-                         planet.moons.map(moon => {
-                           const matchingMoon = moonsWithNamesArray.find(moonWithName => moon.id === moonWithName.id)
-                           return matchingMoon ? matchingMoon : moon;
-                         })
-                    let updatedPlanet = { ...planet,  moons: moonsUpdated };                    
-                    return updatedPlanet;
+      mergeMap((planets: Planet[]) =>
+        forkJoin(planets.map((planet: Planet) => of(planet).pipe(
+          mergeMap(planet =>
+            // forkJoin executes in parallel and returns an array of results                
+            forkJoin(planet.moons.map((moon: Moon) => this.planetsService.moon(moon.id))).pipe(
+              map(moonsWithNamesArray => {
+                let moonsUpdated: Moon[] =
+                  planet.moons.map(moon => {
+                    const matchingMoon = moonsWithNamesArray.find(moonWithName => moon.id === moonWithName.id)
+                    return matchingMoon ? matchingMoon : moon;
                   })
-                )
-              )   
-            )            
-          )  
-        )
-      )
-      ).subscribe( planetsWithMoonNames  => {
-        this.planetsWithMoonNames = planetsWithMoonNames;
-      })
+                let updatedPlanet = { ...planet, moons: moonsUpdated };
+                return updatedPlanet;
+              })
+          ))
+        ))
+      ))
+    ).subscribe(planetsWithMoonNames => {
+      this.planetsWithMoonNames = planetsWithMoonNames;
+    })
 
     // solution 3 - Promises and await
-
+    // convert the obs into a promise
+    
     // error handling
-        
+    // to do    
+  }
+
+  async loadPlanetsAsync() {
+    const planets = await this.planets$.toPromise();
+    
+    console.log('planets: ', planets);
+    
+    planets.forEach(planet => {
+          planet.moons.forEach(async moon => {
+            const hello = await this.planetsService.moon(moon.id).toPromise();
+            console.log(hello);
+          }
+        )
+    })
+
   }
 
 }
