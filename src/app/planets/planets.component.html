@@ -1,11 +1,15 @@
-<p>planets works!</p>
-<button (click)="loadPlanets()">Load planets</button>
+<h1>Loading nested http requests</h1>
+<hr>
+<button (click)="loadPlanetsNestedSubscribe()">Load planets nested subscribe</button>
+<hr>
+<button (click)="loadPlanetsMergeMap()">Load planets mergeMap</button>
+<hr>
+<button (click)="loadPlanetsForkJoin()">Load planets forkJoin</button>
+<hr>
 <button (click)="loadPlanetsAsync()">Load planets Promises</button>
 
 <hr>
+
 <pre>
-planets {{ planets | json }}
-moons {{ moons | json }}
-<hr>
 planets with moon names {{ planetsWithMoonNames | json }}
 </pre>
