@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { from, of } from 'rxjs';
-import { concatMap, map, mergeMap, tap, toArray } from 'rxjs/operators';
+import { catchError, concatMap, map, mergeMap, tap, toArray } from 'rxjs/operators';
 import { Moon, Planet } from '../models';
 import { PlanetsService } from '../planets.service';
 
@@ -79,14 +79,15 @@ export class PlanetsComponent implements OnInit {
         mergeMap(planets =>     // transform planets into observable       
           from(planets) // converts planets into observable
             .pipe(
-              concatMap(planet => // transform moon ids into observable
+              mergeMap(planet => // transform moon ids into observable
                 from(planet.moons) // convert ids into observables
                   .pipe(
-                    concatMap((moon: Moon) => this.planetsService.moon(moon.id)), 
+                    mergeMap((moon: Moon) => this.planetsService.moon(moon.id)), 
                     toArray(), // concatenate results of stream into array of moons,
                     map(moonsWithNamesArray => {
                       // do data mapping, data transform here
                       // in this case, we want to append moon names to the moon array in the parent 'planet' object
+                      // note: we have access to planet (it is in the closure)
                       let moonsUpdated: Moon[] = 
                          planet.moons.map(moon => {
                            const matchingMoon = moonsWithNamesArray.find(moonWithName => moon.id === moonWithName.id)
@@ -99,9 +100,10 @@ export class PlanetsComponent implements OnInit {
               ),
             )
         ),
-        tap(planetWithMoonNames => console.log('planetWithMoonNames: ', planetWithMoonNames))
-    ).subscribe(planetWithMoonName => {
-      this.planetsWithMoonNames.push(planetWithMoonName);
+        tap(planetWithMoonNames => console.log('planetWithMoonNames: ', planetWithMoonNames)),
+        toArray(), // wait til everything comes back and return as an array
+    ).subscribe(planetsWithMoonNames => {
+      this.planetsWithMoonNames = planetsWithMoonNames;
     })
 
 
