@@ -111,7 +111,8 @@ export class PlanetsComponent implements OnInit {
     this.planets$.pipe(
         tap(planets => this.planets = planets),
         mergeMap((planets: Planet[]) =>     
-          from(planets).pipe(
+          forkJoin( planets.map((planet: Planet) =>
+            of(planet).pipe(
               mergeMap(planet => 
                 // forkJoin executes in parallel and returns an array of results                
                 forkJoin(planet.moons.map((moon: Moon) => this.planetsService.moon(moon.id))).pipe(
@@ -125,10 +126,11 @@ export class PlanetsComponent implements OnInit {
                     return updatedPlanet;
                   })
                 )
-              ),             
-          )      
-        ),
-        toArray()
+              )   
+            )            
+          )  
+        )
+      )
       ).subscribe( planetsWithMoonNames  => {
         this.planetsWithMoonNames = planetsWithMoonNames;
       })
