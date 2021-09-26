@@ -142,13 +142,13 @@ export class PlanetsComponent implements OnInit {
     console.log('planets: ', planets);
     
     planets.forEach(planet => {
-          planet.moons.forEach(async moon => {
-            const hello = await this.planetsService.moon(moon.id).toPromise();
-            console.log(hello);
-          }
-        )
+      planet.moons.forEach(async moon => {
+        const moonResponse = await this.planetsService.moon(moon.id).toPromise();
+        moon.name = moonResponse.name;
+      })
     })
 
+    this.planetsWithMoonNames = planets;
   }
 
 }
